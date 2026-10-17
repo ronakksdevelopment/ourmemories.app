@@ -5,7 +5,7 @@
    those always need a live, authenticated connection.
    =========================================================== */
 
-const CACHE_NAME = "our-memories-shell-v1";
+const CACHE_NAME = "our-memories-shell-v2";
 
 // Paths are relative so this works at any GitHub Pages subpath.
 const SHELL_FILES = [

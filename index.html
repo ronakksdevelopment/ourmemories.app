@@ -68,6 +68,9 @@
         <span class="brand-word">Our Memories</span>
       </div>
       <div class="topbar-actions">
+        <button id="btn-select-mode" class="icon-btn" aria-label="Select photos">
+          <i class="fa-regular fa-square-check" data-fallback="\u2713"></i>
+        </button>
         <button id="btn-refresh" class="icon-btn" aria-label="Refresh">
           <i id="refresh-icon" class="fa-solid fa-rotate" data-fallback="\u21BB"></i>
         </button>
@@ -82,9 +85,54 @@
         <div class="spinner" aria-hidden="true"></div>
         <p>Loading your memories…</p>
       </div>
-      <iframe id="gallery-frame" class="gallery-frame hidden" allow="autoplay" allowfullscreen frameborder="0"></iframe>
+      <div id="gallery-empty" class="state-block hidden">
+        <i class="fa-regular fa-images" data-fallback="\u{1F5BC}" style="font-size:2rem;"></i>
+        <p>No photos or videos found in this folder yet.</p>
+      </div>
+      <div id="gallery-error" class="state-block hidden">
+        <i class="fa-solid fa-triangle-exclamation" data-fallback="!" style="font-size:2rem;"></i>
+        <p id="gallery-error-text">Couldn't load this folder.</p>
+        <button id="btn-retry" class="btn btn-secondary" style="width:auto;padding:10px 20px;">Try again</button>
+      </div>
+      <div id="gallery-grid" class="gallery-grid hidden"></div>
     </main>
+
+    <!-- ---------- Selection action bar ---------- -->
+    <div id="select-bar" class="select-bar hidden">
+      <button id="btn-select-cancel" class="select-bar-btn">Cancel</button>
+      <span id="select-count" class="select-count">0 selected</span>
+      <button id="btn-select-download" class="select-bar-btn select-bar-btn-primary">
+        <i class="fa-solid fa-download" data-fallback="\u2B07"></i> Download
+      </button>
+    </div>
   </section>
+
+  <!-- ---------- Fullscreen lightbox viewer ---------- -->
+  <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-label="Photo viewer">
+    <div id="lightbox-stage" class="lightbox-stage">
+      <div id="lightbox-spinner" class="spinner lightbox-spinner hidden" aria-hidden="true"></div>
+      <img id="lightbox-img" class="lightbox-media hidden" alt="">
+      <video id="lightbox-video" class="lightbox-media hidden" controls playsinline></video>
+    </div>
+    <div class="lightbox-topbar">
+      <span id="lightbox-name" class="lightbox-name"></span>
+    </div>
+    <button id="lightbox-prev" class="lightbox-nav-btn lightbox-prev" aria-label="Previous">
+      <i class="fa-solid fa-chevron-left" data-fallback="\u2039"></i>
+    </button>
+    <button id="lightbox-next" class="lightbox-nav-btn lightbox-next" aria-label="Next">
+      <i class="fa-solid fa-chevron-right" data-fallback="\u203A"></i>
+    </button>
+    <div class="lightbox-bottombar">
+      <button id="lightbox-close" class="icon-btn lightbox-btn" aria-label="Close">
+        <i class="fa-solid fa-xmark" data-fallback="\u2715"></i>
+      </button>
+      <span id="lightbox-counter" class="lightbox-counter"></span>
+      <button id="lightbox-download" class="icon-btn lightbox-btn" aria-label="Download">
+        <i class="fa-solid fa-download" data-fallback="\u2B07"></i>
+      </button>
+    </div>
+  </div>
 
   <!-- ---------- Settings sheet ---------- -->
   <div id="sheet-settings" class="sheet hidden" role="dialog" aria-modal="true" aria-label="Change folder">
@@ -99,8 +147,9 @@
           <input type="text" id="input-folder-link-2" placeholder="https://drive.google.com/drive/folders/...">
         </label>
         <button id="btn-save-settings" class="btn btn-primary">Save & reload</button>
+        <button id="btn-open-in-drive" class="btn btn-secondary">Open folder in Drive</button>
         <button id="btn-install" class="btn btn-secondary">Install app</button>
-        <p class="settings-version">Our Memories — Version 1.0</p>
+        <p class="settings-version">Our Memories — Version 2.0</p>
       </div>
     </div>
   </div>
