@@ -16,228 +16,101 @@
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
 
-<!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-<!-- Font Awesome (with graceful fallback handled in app.js) -->
 <link id="fa-css" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer">
 
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-<!-- ======================= APP SHELL ======================= -->
 <div id="app">
 
-  <!-- ---------- Loading splash ---------- -->
   <div id="splash" class="splash">
     <img src="assets/icon-192.png" alt="" class="splash-logo">
     <p class="splash-text">Our Memories</p>
   </div>
 
-  <!-- ---------- SETUP: connect + choose folder ---------- -->
-  <section id="screen-setup" class="screen hidden">
+  <!-- ---------- HOME: paste folder link ---------- -->
+  <section id="screen-home" class="screen hidden">
     <div class="setup-wrap">
       <img src="assets/icon-192.png" alt="Our Memories logo" class="setup-logo">
       <h1 class="setup-title">Our Memories</h1>
-      <p class="setup-sub">A private gallery just for the two of you, built on your own Google Drive.</p>
+      <p class="setup-sub">Paste your Google Drive folder link below to open your gallery. No account, no setup.</p>
 
-      <div id="setup-step-config" class="setup-card">
-        <h2 class="setup-card-title">1. Connect this app to Google</h2>
-        <p class="setup-card-text">Paste the Client ID and API key from your Google Cloud project. These stay only in this browser — never in the app's code.</p>
+      <div class="setup-card">
         <label class="field">
-          <span>Google OAuth Client ID</span>
-          <input type="text" id="input-client-id" placeholder="xxxxxxxx.apps.googleusercontent.com" autocomplete="off" spellcheck="false">
+          <span>Google Drive folder link</span>
+          <input type="text" id="input-folder-link" placeholder="https://drive.google.com/drive/folders/..." autocomplete="off" spellcheck="false">
         </label>
-        <label class="field">
-          <span>Google API key</span>
-          <input type="text" id="input-api-key" placeholder="AIza..." autocomplete="off" spellcheck="false">
-        </label>
-        <button id="btn-save-config" class="btn btn-primary">Save & continue</button>
-        <button id="btn-show-help" class="btn btn-text">How do I get these?</button>
-      </div>
-
-      <div id="setup-step-connect" class="setup-card hidden">
-        <h2 class="setup-card-title">2. Sign in with Google</h2>
-        <p class="setup-card-text">Sign in with the Google account that owns (or can access) your shared photo folder.</p>
-        <button id="btn-google-signin" class="btn btn-primary">
-          <i class="fa-brands fa-google" aria-hidden="true" data-fallback="G"></i> Sign in with Google
+        <button id="btn-load-gallery" class="btn btn-primary">
+          <i class="fa-solid fa-images" data-fallback="\u{1F5BC}"></i> Open gallery
         </button>
-        <button id="btn-edit-config" class="btn btn-text">Edit Client ID / API key</button>
       </div>
 
-      <div id="setup-step-folder" class="setup-card hidden">
-        <h2 class="setup-card-title">3. Choose your folder</h2>
-        <p class="setup-card-text">Paste your Google Drive folder link below, or just pick it directly from Drive.</p>
-        <label class="field">
-          <span>Google Drive folder link (optional)</span>
-          <input type="text" id="input-folder-link" placeholder="https://drive.google.com/drive/folders/...">
-        </label>
-        <button id="btn-pick-folder" class="btn btn-primary">
-          <i class="fa-regular fa-folder-open" aria-hidden="true" data-fallback="📁"></i> Select folder from Google Drive
-        </button>
-        <button id="btn-signout" class="btn btn-text">Sign out</button>
-      </div>
-
-      <p id="setup-error" class="setup-error hidden" role="alert"></p>
+      <p id="home-error" class="setup-error hidden" role="alert"></p>
+      <p class="privacy-hint">
+        This only works for folders shared as <strong>"Anyone with the link."</strong>
+        In Drive, right-click your folder → Share → General access → Anyone with the
+        link. That also means anyone who gets hold of the folder link can view it
+        directly in Drive — keep the link itself just as private as your memories.
+      </p>
     </div>
   </section>
 
-  <!-- ---------- Help sheet: Google Cloud setup walkthrough ---------- -->
-  <div id="sheet-help" class="sheet hidden" role="dialog" aria-modal="true" aria-label="Setup help">
-    <div class="sheet-inner">
-      <div class="sheet-head">
-        <h2>Getting your Client ID & API key</h2>
-        <button class="icon-btn" id="btn-close-help" aria-label="Close"><i class="fa-solid fa-xmark" data-fallback="✕"></i></button>
-      </div>
-      <div class="sheet-body">
-        <ol class="help-list">
-          <li>Go to <strong>console.cloud.google.com</strong> and create a new project.</li>
-          <li>Open <strong>APIs & Services → Library</strong>, enable the <strong>Google Drive API</strong> and the <strong>Google Picker API</strong>.</li>
-          <li>Open <strong>APIs & Services → OAuth consent screen</strong>. Choose <strong>External</strong>, fill in the basics, and under <strong>Test users</strong> add your own and your partner's Gmail address. Leave the app in <strong>Testing</strong> mode — that's what keeps it free and avoids Google's review process.</li>
-          <li>Open <strong>APIs & Services → Credentials → Create credentials → OAuth client ID</strong>. Choose <strong>Web application</strong>, and under <strong>Authorized JavaScript origins</strong> add your GitHub Pages address (e.g. <code>https://yourname.github.io</code>). Copy the Client ID.</li>
-          <li>Still in Credentials, choose <strong>Create credentials → API key</strong>. Click into it and restrict it to <strong>HTTP referrers</strong> (your GitHub Pages address) and to the <strong>Drive API</strong> + <strong>Picker API</strong>. Copy the key.</li>
-          <li>Paste both values into this screen. Full details are in the README that came with this app.</li>
-        </ol>
-      </div>
-    </div>
-  </div>
-
-  <!-- ---------- GALLERY (home) ---------- -->
+  <!-- ---------- GALLERY ---------- -->
   <section id="screen-gallery" class="screen hidden">
-
-    <header id="gallery-header" class="topbar">
+    <header class="topbar">
       <div class="topbar-brand">
         <img src="assets/icon-192.png" alt="" class="brand-mark">
         <span class="brand-word">Our Memories</span>
       </div>
       <div class="topbar-actions">
-        <button id="btn-select-mode" class="icon-btn" aria-label="Select items"><i class="fa-regular fa-circle-check" data-fallback="☑"></i></button>
-        <button id="btn-settings" class="icon-btn" aria-label="Settings"><i class="fa-solid fa-gear" data-fallback="⚙"></i></button>
+        <button id="btn-refresh" class="icon-btn" aria-label="Refresh">
+          <i id="refresh-icon" class="fa-solid fa-rotate" data-fallback="\u21BB"></i>
+        </button>
+        <button id="btn-change-folder" class="icon-btn" aria-label="Change folder">
+          <i class="fa-regular fa-folder-open" data-fallback="\u{1F4C1}"></i>
+        </button>
       </div>
     </header>
 
-    <header id="selection-bar" class="topbar topbar-selection hidden">
-      <button id="btn-cancel-select" class="icon-btn" aria-label="Cancel selection"><i class="fa-solid fa-xmark" data-fallback="✕"></i></button>
-      <span id="selection-count" class="selection-count">0 selected</span>
-      <div class="topbar-actions">
-        <button id="btn-select-all" class="icon-btn" aria-label="Select all"><i class="fa-regular fa-square-check" data-fallback="☑"></i></button>
-        <button id="btn-download-selected" class="icon-btn" aria-label="Download selected"><i class="fa-solid fa-download" data-fallback="⬇"></i></button>
-        <button id="btn-delete-selected" class="icon-btn icon-btn-danger" aria-label="Delete selected"><i class="fa-regular fa-trash-can" data-fallback="🗑"></i></button>
-      </div>
-    </header>
-
-    <main id="gallery-main" class="gallery-main">
-      <div id="gallery-loading" class="state-block hidden">
+    <main class="gallery-main">
+      <div id="gallery-loading" class="state-block">
         <div class="spinner" aria-hidden="true"></div>
         <p>Loading your memories…</p>
       </div>
-
-      <div id="gallery-empty" class="state-block hidden">
-        <i class="fa-regular fa-images state-icon" aria-hidden="true" data-fallback="🖼"></i>
-        <h2>No memories here yet</h2>
-        <p>Tap the pink button below to add your first photo or video.</p>
-      </div>
-
-      <div id="gallery-error" class="state-block hidden">
-        <i class="fa-solid fa-circle-exclamation state-icon" aria-hidden="true" data-fallback="⚠"></i>
-        <p id="gallery-error-text">Something went wrong.</p>
-        <button id="btn-retry" class="btn btn-primary">Try again</button>
-      </div>
-
-      <div id="gallery-grid" class="grid hidden" role="list"></div>
-
-      <button id="btn-load-more" class="btn btn-secondary btn-load-more hidden">Load more</button>
+      <iframe id="gallery-frame" class="gallery-frame hidden" allow="autoplay" allowfullscreen frameborder="0"></iframe>
     </main>
-
-    <!-- Floating add button -->
-    <div class="fab-wrap">
-      <button id="btn-fab" class="fab" aria-label="Add photos or videos" aria-haspopup="true" aria-expanded="false">
-        <i class="fa-solid fa-plus" data-fallback="+"></i>
-      </button>
-      <div id="fab-menu" class="fab-menu hidden">
-        <button id="btn-upload-photos" class="fab-menu-item">
-          <i class="fa-regular fa-image" data-fallback="🖼"></i> Upload photos
-        </button>
-        <button id="btn-upload-videos" class="fab-menu-item">
-          <i class="fa-regular fa-circle-play" data-fallback="▶"></i> Upload videos
-        </button>
-      </div>
-    </div>
-
-    <input type="file" id="input-upload-photos" accept="image/*" multiple hidden>
-    <input type="file" id="input-upload-videos" accept="video/*" multiple hidden>
   </section>
 
-  <!-- ---------- Upload progress sheet ---------- -->
-  <div id="sheet-upload" class="sheet hidden" role="dialog" aria-modal="true" aria-label="Uploading">
-    <div class="sheet-inner">
-      <div class="sheet-head">
-        <h2>Uploading</h2>
-        <button class="icon-btn hidden" id="btn-close-upload" aria-label="Close"><i class="fa-solid fa-xmark" data-fallback="✕"></i></button>
-      </div>
-      <div class="sheet-body" id="upload-list"></div>
-    </div>
-  </div>
-
   <!-- ---------- Settings sheet ---------- -->
-  <div id="sheet-settings" class="sheet hidden" role="dialog" aria-modal="true" aria-label="Settings">
+  <div id="sheet-settings" class="sheet hidden" role="dialog" aria-modal="true" aria-label="Change folder">
     <div class="sheet-inner">
       <div class="sheet-head">
-        <h2>Settings</h2>
-        <button class="icon-btn" id="btn-close-settings" aria-label="Close"><i class="fa-solid fa-xmark" data-fallback="✕"></i></button>
+        <h2>Change folder</h2>
+        <button class="icon-btn" id="btn-close-settings" aria-label="Close"><i class="fa-solid fa-xmark" data-fallback="\u2715"></i></button>
       </div>
       <div class="sheet-body">
-        <div class="settings-row">
-          <div>
-            <p class="settings-label">Connected folder</p>
-            <p class="settings-value" id="settings-folder-name">—</p>
-          </div>
-          <button id="btn-change-folder" class="btn btn-secondary">Change</button>
-        </div>
-        <div class="settings-row">
-          <div>
-            <p class="settings-label">Signed in as</p>
-            <p class="settings-value" id="settings-account">—</p>
-          </div>
-          <button id="btn-settings-signout" class="btn btn-secondary">Sign out</button>
-        </div>
-        <div class="settings-row">
-          <div>
-            <p class="settings-label">Install app</p>
-            <p class="settings-value">Add Our Memories to your home screen.</p>
-          </div>
-          <button id="btn-install" class="btn btn-secondary">Install</button>
-        </div>
+        <label class="field">
+          <span>Google Drive folder link</span>
+          <input type="text" id="input-folder-link-2" placeholder="https://drive.google.com/drive/folders/...">
+        </label>
+        <button id="btn-save-settings" class="btn btn-primary">Save & reload</button>
+        <button id="btn-install" class="btn btn-secondary">Install app</button>
         <p class="settings-version">Our Memories — Version 1.0</p>
-        <button id="btn-privacy-note" class="btn btn-text">About privacy</button>
       </div>
     </div>
   </div>
 
-  <!-- ---------- Privacy note sheet ---------- -->
-  <div id="sheet-privacy" class="sheet hidden" role="dialog" aria-modal="true" aria-label="Privacy">
-    <div class="sheet-inner">
-      <div class="sheet-head">
-        <h2>About privacy</h2>
-        <button class="icon-btn" id="btn-close-privacy" aria-label="Close"><i class="fa-solid fa-xmark" data-fallback="✕"></i></button>
-      </div>
-      <div class="sheet-body">
-        <p>This app's code is hosted on GitHub Pages, which is public — anyone with the link can open the app itself.</p>
-        <p>What keeps your memories private is that the app only shows files it can access with <em>your</em> Google sign-in. Nobody can see your photos or videos unless they sign in with a Google account you've personally approved as a tester in your Google Cloud project, and that account can open the connected folder.</p>
-        <p>This app is not password-protected beyond Google sign-in. Don't rely on the website URL being secret.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- ---------- Install instructions sheet (iOS / unsupported browsers) ---------- -->
+  <!-- ---------- Install instructions sheet ---------- -->
   <div id="sheet-install-help" class="sheet hidden" role="dialog" aria-modal="true" aria-label="Install instructions">
     <div class="sheet-inner">
       <div class="sheet-head">
         <h2>Add to home screen</h2>
-        <button class="icon-btn" id="btn-close-install-help" aria-label="Close"><i class="fa-solid fa-xmark" data-fallback="✕"></i></button>
+        <button class="icon-btn" id="btn-close-install-help" aria-label="Close"><i class="fa-solid fa-xmark" data-fallback="\u2715"></i></button>
       </div>
       <div class="sheet-body">
         <p><strong>iPhone / iPad (Safari):</strong> tap the Share icon, then "Add to Home Screen".</p>
@@ -247,48 +120,9 @@
     </div>
   </div>
 
-  <!-- ---------- Confirm delete dialog ---------- -->
-  <div id="dialog-confirm" class="dialog hidden" role="alertdialog" aria-modal="true">
-    <div class="dialog-card">
-      <p id="dialog-confirm-text">Move 1 item to Google Drive's trash?</p>
-      <div class="dialog-actions">
-        <button id="btn-confirm-cancel" class="btn btn-text">Cancel</button>
-        <button id="btn-confirm-ok" class="btn btn-danger">Move to trash</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ---------- Toast ---------- -->
   <div id="toast" class="toast hidden" role="status"></div>
-
-  <!-- ---------- PHOTO / VIDEO VIEWER ---------- -->
-  <div id="viewer" class="viewer hidden" role="dialog" aria-modal="true" aria-label="Media viewer">
-    <div class="viewer-top">
-      <button id="btn-viewer-close" class="icon-btn icon-btn-light" aria-label="Close"><i class="fa-solid fa-xmark" data-fallback="✕"></i></button>
-      <span id="viewer-counter" class="viewer-counter">1 of 1</span>
-      <button id="btn-viewer-download" class="icon-btn icon-btn-light" aria-label="Download"><i class="fa-solid fa-download" data-fallback="⬇"></i></button>
-    </div>
-
-    <button id="btn-viewer-prev" class="viewer-nav viewer-nav-prev" aria-label="Previous"><i class="fa-solid fa-chevron-left" data-fallback="‹"></i></button>
-    <button id="btn-viewer-next" class="viewer-nav viewer-nav-next" aria-label="Next"><i class="fa-solid fa-chevron-right" data-fallback="›"></i></button>
-
-    <div id="viewer-stage" class="viewer-stage">
-      <div id="viewer-loading" class="spinner spinner-light hidden" aria-hidden="true"></div>
-      <img id="viewer-image" class="viewer-media hidden" alt="">
-      <video id="viewer-video" class="viewer-media hidden" controls playsinline></video>
-      <div id="viewer-fallback" class="viewer-fallback hidden">
-        <i class="fa-solid fa-triangle-exclamation" aria-hidden="true" data-fallback="⚠"></i>
-        <p id="viewer-fallback-text">This video can't be played here.</p>
-        <a id="viewer-fallback-link" href="#" target="_blank" rel="noopener" class="btn btn-primary">Open in Google Drive</a>
-      </div>
-    </div>
-  </div>
-
 </div>
 
-<script src="https://apis.google.com/js/api.js"></script>
-<script src="https://accounts.google.com/gsi/client"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="app.js"></script>
 </body>
 </html>
