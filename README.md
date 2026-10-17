@@ -1,13 +1,9 @@
-# Our Memories — v2.1 (custom gallery with automatic fallback, still no API key)
+# Our Memories — v2.0 (custom gallery, still no API key)
 
 Paste a Google Drive folder link, see your photos and videos as a real,
-custom-built gallery: a proper grid, tap-to-fullscreen viewing, pinch/
-double-tap to zoom, swipe left/right between photos, multi-select, and
-one-tap downloads straight to the device. No Google Cloud project, no API
-key, no sign-in — and if the custom gallery can't load for any reason, the
-app automatically falls back to the same reliable Google-embed view the
-very first version of this app used, so you're never left with a blank
-error screen.
+custom-built gallery: a proper grid, tap-to-fullscreen viewing, swipe
+left/right between photos, multi-select, and one-tap downloads straight to
+the device. No Google Cloud project, no API key, no sign-in.
 
 ---
 
@@ -15,8 +11,8 @@ error screen.
 
 There's no official, keyless way for a plain web page to ask Google Drive
 "list the files in this public folder." That normally requires the Drive
-API and an API key. This version avoids that, but the price is that the
-custom gallery relies on two things outside this app's control:
+API and an API key. This version avoids that, but the price is that it
+relies on two things outside this app's control:
 
 1. **A public CORS proxy.** Browsers aren't allowed to directly read the
    HTML of a page on a different site (like `drive.google.com`) — that's a
@@ -24,27 +20,24 @@ custom gallery relies on two things outside this app's control:
    server of its own, this app routes the request through a free,
    keyless, third-party CORS proxy. `app.js` tries a short list of these
    in order (see `CORS_PROXIES` near the top of the file) and uses
-   whichever one answers first.
+   whichever one answers first. **If all of them are down, slow, or
+   blocked, the gallery won't load.** Swapping in a different proxy is a
+   one-line change in that list.
 2. **Google's own folder-listing page keeping its current shape.** This
    app fetches the same HTML Google generates for its public
-   "embeddedfolderview" (the thing v1.0 of this app put directly in an
+   "embeddedfolderview" (the thing the old v1.0 of this app put in an
    iframe) and parses file IDs and names out of that HTML with pattern
    matching, since Google doesn't publish or guarantee that markup.
+   Several fallback patterns are used so small changes shouldn't break it,
+   but **a bigger redesign on Google's end could stop the parser from
+   finding files** until someone updates the patterns in
+   `parseFolderHtml()` in `app.js`.
 
-**If either of those fails** — the proxy is down, blocked, or Google
-changed the page enough to break the pattern matching — the app
-automatically shows Google's own embedded folder view instead (exactly
-like v1.0), with a small note at the bottom of the screen saying so. You
-still see your photos either way; you just lose the custom fullscreen
-viewer, zoom, and multi-select for that session, and get Google's own
-preview (tap a photo → it already has its own zoom and download icon)
-instead. The app quietly retries the custom gallery on every refresh, so
-it switches back on its own once the proxy/parsing works again.
-
-In short: when everything lines up, you get the fuller custom experience;
-when it doesn't, you always still get a working gallery — just the
-simpler one. See **If something stops working** below for what each
-situation looks like.
+In short: this is a real, working app, not a toy — but it's built on
+reverse-engineered behavior rather than an official API, so it's more
+fragile than a version built on the real Drive API. If it ever stops
+loading photos and nothing in your folder or sharing settings changed,
+this is why — see **If something stops working** below.
 
 ---
 
@@ -95,16 +88,11 @@ That's the whole setup — nothing to configure in Google Cloud at all.
 
 ## Using the app
 
-**When the custom gallery is working:**
 - **The grid** is this app's own — tap any photo or video thumbnail to
   open it fullscreen.
 - **In the fullscreen viewer:**
   - **Swipe left/right** (or tap the arrow buttons / use the keyboard
     arrow keys on desktop) to move between photos and videos.
-  - **Zoom:** double-tap a photo to zoom in, double-tap again to zoom
-    back out, or pinch with two fingers. On desktop, double-click or
-    scroll to zoom. Swiping to the next photo is disabled while zoomed
-    in, so panning around a zoomed photo doesn't also flip the page.
   - **Bottom bar:** ✕ closes the viewer, the counter shows your position
     (e.g. "3 / 42"), and the download icon saves that one file straight to
     the device.
@@ -114,19 +102,8 @@ That's the whole setup — nothing to configure in Google Cloud at all.
   normal grid to jump straight into select mode. A bar at the bottom
   shows how many are selected and lets you **Download** all of them at
   once (one file after another — see note below) or **Cancel**.
-
-**When the app has fallen back to Google's own view** (see the warning
-above — you'll see a note at the bottom of the screen when this is
-happening):
-- The grid is Google's own embedded folder view. Tap a thumbnail to open
-  Google's own preview, which has its own built-in zoom and a download
-  icon in its corner.
-- The select icon is hidden, since multi-select needs the custom gallery.
-
-**Either way:**
 - **Refresh icon (top right)** — tap to pull the latest contents of the
-  folder; the icon spins while it reloads, and also gives the custom
-  gallery another chance to load if it was showing the fallback.
+  folder; the icon spins while it reloads.
 - **Auto-refresh** — while the app is open and visible, it quietly reloads
   the gallery about every 90 seconds to catch anything new.
 - **Folder icon (top right)** — change the connected folder link, open the
@@ -164,14 +141,9 @@ that instead.
 ## Known limitations
 
 - **The folder must stay set to "Anyone with the link."** Switch it back
-  to "Restricted" and neither the custom gallery nor the fallback will
-  load until it's public again.
-- **The custom gallery (fullscreen/zoom/multi-select) relies on a
-  third-party CORS proxy and on Google's unofficial folder-listing
-  markup** — see the warning at the top of this file. When either one
-  is unavailable, the app automatically shows the simpler, reliable
-  fallback instead, so the gallery itself never stops working — only the
-  extra features do.
+  to "Restricted" and the gallery stops loading until it's public again.
+- **Relies on a third-party CORS proxy and on Google's unofficial
+  folder-listing markup** — see the warning at the top of this file.
 - **No real zip download** for multi-select — see the note above.
 - **Offline mode** only keeps this app's own frame (logo, buttons, loading
   screen, grid layout) available without a connection — actual photos and
@@ -181,19 +153,18 @@ that instead.
 
 ## If something stops working
 
-- **You keep seeing "Showing Google's own view" at the bottom of the
-  screen:** this means the custom gallery couldn't load (the CORS proxy
-  is down, or Google changed its page), so the app is using the reliable
-  fallback automatically. Your photos are still there and still viewable —
-  you've just lost zoom/swipe/multi-select for now. Tapping refresh tries
-  the custom gallery again.
-- **Nothing loads at all, not even the fallback:** check the folder is
-  still shared as "Anyone with the link" — that one requirement applies
-  to both the custom gallery and the fallback.
+- **Gallery won't load / shows an error:** first check the folder is
+  still shared as "Anyone with the link." If it is, the free CORS proxy
+  this app depends on may be temporarily down — try the refresh icon
+  again in a minute, or in the worst case swap the proxy list in
+  `app.js` for a different public CORS proxy.
 - **Photos load but names look like "Photo 1", "Photo 2"...**: the parser
   couldn't find a filename for that entry in Google's page — the photo
   itself will still open and download fine, just without its original
   name showing in the list.
+- **A single photo or video won't open fullscreen:** tap "Open folder in
+  Drive" (folder icon → Open folder in Drive) to view it directly in
+  Drive instead.
 - **Wrong or old link pasted:** tap the folder icon in the gallery's top
   bar to paste a new link at any time.
 
@@ -203,13 +174,13 @@ that instead.
 
 ```
 our-memories/
-  index.html          — app structure & screens, grid, lightbox, select bar, fallback iframe
+  index.html          — app structure & screens, grid, lightbox, select bar
   styles.css           — all styling (cream / pink / lavender theme)
-  app.js               — folder parsing, grid, lightbox, zoom, swipe, downloads, fallback logic
+  app.js               — folder parsing, grid, lightbox, swipe, downloads
   manifest.json        — PWA install metadata
   service-worker.js    — offline app-shell caching
   assets/              — app icons generated from your logo
   README.md            — this file
 ```
 
-Our Memories — Version 2.1.
+Our Memories — Version 2.0.
