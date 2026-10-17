@@ -132,8 +132,17 @@
   function wireEvents() {
     $("btn-load-gallery").addEventListener("click", onOpenGallery);
 
-    $("btn-refresh").addEventListener("click", () => loadGallery({ spin: true }));
+    $("btn-refresh").addEventListener("click", () => {
+      const inFallback = !$("gallery-frame").classList.contains("hidden");
+      if (inFallback) {
+        setRefreshSpinning(true);
+        showFallbackEmbed();
+      } else {
+        loadGallery({ spin: true });
+      }
+    });
     $("btn-retry").addEventListener("click", () => loadGallery({ spin: true }));
+    $("gallery-frame").addEventListener("load", () => setRefreshSpinning(false));
 
     $("btn-change-folder").addEventListener("click", () => {
       $("input-folder-link-2").value = state.folderLink || "";
@@ -231,35 +240,51 @@
   }
 
   function setGalleryState(name) {
-    // name: "loading" | "empty" | "error" | "grid"
+    // name: "loading" | "empty" | "error" | "grid" | "fallback"
     $("gallery-loading").classList.toggle("hidden", name !== "loading");
     $("gallery-empty").classList.toggle("hidden", name !== "empty");
     $("gallery-error").classList.toggle("hidden", name !== "error");
     $("gallery-grid").classList.toggle("hidden", name !== "grid");
+    $("gallery-frame").classList.toggle("hidden", name !== "fallback");
+    $("gallery-fallback-note").classList.toggle("hidden", name !== "fallback");
+    // Multi-select only works against our own parsed grid — hide
+    // the select icon whenever we're showing Google's own embed.
+    $("btn-select-mode").classList.toggle("hidden", name === "fallback");
+    if (name !== "fallback") $("select-bar").classList.add("hidden");
+  }
+
+  function showFallbackEmbed() {
+    const url = `https://drive.google.com/embeddedfolderview?id=${encodeURIComponent(state.folderId)}#grid`;
+    $("gallery-frame").src = url;
+    setGalleryState("fallback");
   }
 
   async function loadGallery({ spin } = {}) {
     if (!state.folderId) return;
     if (spin) setRefreshSpinning(true);
-    if (state.items.length === 0) setGalleryState("loading");
+    const hadItemsBefore = state.items.length > 0;
+    const wasInFallback = !$("gallery-frame").classList.contains("hidden");
+    if (!hadItemsBefore && !wasInFallback) setGalleryState("loading");
 
     try {
       const html = await fetchFolderHtml(state.folderId);
       const items = parseFolderHtml(html);
-      state.items = items;
+      // Too few recognizable items usually means the parser didn't
+      // actually find real entries (Google changed the markup, or
+      // the proxy returned something unexpected) rather than the
+      // folder genuinely being empty, so treat it the same as a
+      // failure and fall back rather than show a false "empty".
       if (items.length === 0) {
-        setGalleryState("empty");
-      } else {
-        renderGrid(items);
-        setGalleryState("grid");
+        throw new Error("Parser found no items");
       }
+      state.items = items;
+      renderGrid(items);
+      setGalleryState("grid");
     } catch (err) {
-      console.warn("Gallery load failed:", err);
-      if (state.items.length === 0) {
-        $("gallery-error-text").textContent =
-          "Couldn't load this folder. It may not be shared as “Anyone with the link,” or the free proxy this app relies on may be temporarily down.";
-        setGalleryState("error");
-      } else {
+      console.warn("Custom gallery parse failed, falling back to Google's embed:", err);
+      if (!hadItemsBefore) {
+        showFallbackEmbed();
+      } else if (!wasInFallback) {
         toast("Couldn't refresh — showing the last loaded photos.");
       }
     } finally {
@@ -567,23 +592,123 @@
 
   function wireLightboxSwipe() {
     const stage = $("lightbox-stage");
+    const img = $("lightbox-img");
+
+    // ---- Zoom state (pinch + double-tap), image only ----
+    let scale = 1;
+    let originX = 0, originY = 0; // translate in px, at scale=1 baseline
+    let pinchStartDist = null;
+    let pinchStartScale = 1;
+    let panStart = null;
+    let lastTapTime = 0;
+    let lastTapPoint = null;
+
+    function applyTransform() {
+      img.style.transform = `translate(${originX}px, ${originY}px) scale(${scale})`;
+      img.style.transition = "";
+    }
+    function resetZoom(animate) {
+      scale = 1; originX = 0; originY = 0;
+      if (animate) img.style.transition = "transform 0.18s ease";
+      applyTransform();
+    }
+    function clampScale(s) { return Math.min(4, Math.max(1, s)); }
+
+    // Reset zoom whenever a new image is shown.
+    img.addEventListener("load", () => resetZoom(false));
+
+    function dist(touches) {
+      const [a, b] = touches;
+      return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    }
+    function midpoint(touches) {
+      const [a, b] = touches;
+      return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
+    }
+
     stage.addEventListener("touchstart", (e) => {
-      const t = e.changedTouches[0];
-      state.touchStartX = t.clientX;
-      state.touchStartY = t.clientY;
+      if (e.touches.length === 2) {
+        pinchStartDist = dist(e.touches);
+        pinchStartScale = scale;
+      } else if (e.touches.length === 1) {
+        const t = e.touches[0];
+        state.touchStartX = t.clientX;
+        state.touchStartY = t.clientY;
+        if (scale > 1) {
+          panStart = { x: t.clientX - originX, y: t.clientY - originY };
+        }
+      }
+    }, { passive: true });
+
+    stage.addEventListener("touchmove", (e) => {
+      if (e.touches.length === 2 && pinchStartDist) {
+        const newDist = dist(e.touches);
+        scale = clampScale(pinchStartScale * (newDist / pinchStartDist));
+        applyTransform();
+      } else if (e.touches.length === 1 && panStart && scale > 1) {
+        const t = e.touches[0];
+        originX = t.clientX - panStart.x;
+        originY = t.clientY - panStart.y;
+        applyTransform();
+      }
     }, { passive: true });
 
     stage.addEventListener("touchend", (e) => {
+      if (e.touches.length === 0) {
+        pinchStartDist = null;
+        panStart = null;
+      }
       if (state.touchStartX === null) return;
       const t = e.changedTouches[0];
       const dx = t.clientX - state.touchStartX;
       const dy = t.clientY - state.touchStartY;
+
+      // Double-tap to zoom (only meaningful when not actively pinching).
+      const now = Date.now();
+      if (lastTapPoint && now - lastTapTime < 320 &&
+          Math.hypot(t.clientX - lastTapPoint.x, t.clientY - lastTapPoint.y) < 30) {
+        if (scale > 1) {
+          resetZoom(true);
+        } else {
+          scale = 2.4;
+          img.style.transition = "transform 0.18s ease";
+          applyTransform();
+        }
+        lastTapTime = 0;
+        lastTapPoint = null;
+        state.touchStartX = null;
+        state.touchStartY = null;
+        return;
+      }
+      lastTapTime = now;
+      lastTapPoint = { x: t.clientX, y: t.clientY };
+
       state.touchStartX = null;
       state.touchStartY = null;
+
+      // Swipe to move between photos — only when not zoomed in,
+      // so panning a zoomed photo doesn't also flip the page.
+      if (scale > 1) return;
       if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
       if (dx < 0) stepLightbox(1);
       else stepLightbox(-1);
     }, { passive: true });
+
+    // Desktop: double-click to zoom, wheel to zoom.
+    img.addEventListener("dblclick", () => {
+      if (scale > 1) resetZoom(true);
+      else { scale = 2.4; img.style.transition = "transform 0.18s ease"; applyTransform(); }
+    });
+    stage.addEventListener("wheel", (e) => {
+      if (img.classList.contains("hidden")) return;
+      e.preventDefault();
+      scale = clampScale(scale + (e.deltaY < 0 ? 0.2 : -0.2));
+      if (scale === 1) { originX = 0; originY = 0; }
+      applyTransform();
+    }, { passive: false });
+
+    // Expose reset so other code (closing/navigating the lightbox) can call it.
+    wireLightboxSwipe._resetZoom = resetZoom;
   }
 
   /* ----------------------------------------------------------
